@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>SmartFinance360 - Financial Analysis Tool</title>
+
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<!-- jsPDF CDN -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<!-- jsPDF AutoTable plugin -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+<!-- SheetJS CDN -->
+<script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+
+<style>
+  :root {
+    --primary-color: #3b82f6;
+    --secondary-color: #60a5fa;
+    --background-light: #f9fafb;
+    --background-dark: #121212;
+    --text-light: #222222;
+    --text-dark: #f0f0f0;
+    --card-bg-light: #ffffff;
+    --card-bg-dark: #1e1e1e;
+  }
+  body {
+    margin: 0; padding: 20px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--background-light);
+    color: var(--text-light);
+    transition: background-color 0.3s, color 0.3s;
+  }
+  body.dark-mode {
+    background-color: var(--background-dark);
+    color: var(--text-dark);
+  }
+  h1 {
+    text-align: center;
+    color: var(--primary-color);
+  }
+  label {
+    display: block;
+    margin: 8px 0 4px;
+    font-weight: 600;
+  }
+  input[type=number], select {
+    width: 100%;
+    padding: 8px;
+    box-sizing: border-box;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+    font-size: 1rem;
+  }
+  input[type=number]:focus, select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 5px var(--primary-color);
+  }
+  .container {
+    max-width: 600px;
+    margin: 0 auto 30px;
+    background-color: var(--card-bg-light);
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgb(59 130 246 / 0.3);
+    transition: background-color 0.3s;
+  }
+  body.dark-mode .container {
+    background-color: var(--card-bg-dark);
+    box-shadow: 0 4px 12px rgb(96 165 250 / 0.5);
+  }
+  button {
+    background-color: var(--primary-color);
+    border: none;
+    color: white;
+    padding: 12px 18px;
+    margin-top: 12px;
+    font-size: 1rem;
+    border-radius: 6px;
+    cursor: pointer;
+    width: 100%;
+  }
+  button:hover {
+    background-color: #2563eb;
+  }
+  #resultsSection {
+    display: none;
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+    background-color: var(--card-bg-light);
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgb(59 130 246 / 0.3);
+    transition: background-color 0.3s;
+  }
+  body.dark-mode #resultsSection {
+    background-color: var(--card-bg-dark);
+    box-shadow: 0 4px 12px rgb(96 165 250 / 0.5);
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 12px;
+  }
+  th, td {
+    border: 1px solid #ddd;
+    padding: 10px;
+    text-align: left;
+  }
+  th {
+    background-color: var(--primary-color);
+    color: white;
+  }
+  body.dark-mode th {
+    background-color: #2563eb;
+  }
+  ul {
+    margin: 8px 0 20px 20px;
+  }
+  #recommendations ul {
+    list-style-type: disc;
+    padding-left: 20px;
+  }
+  .toggle-mode {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: var(--primary-color);
+    border: none;
+    color: white;
+    padding: 10px 15px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-weight: bold;
+    box-shadow: 0 2px 8px rgb(59 130 246 / 0.7);
+    z-index: 1000;
+  }
+  canvas {
+    max-width: 100%;
+    margin-top: 20px;
+  }
+  footer {
+    text-align: center;
+    padding: 15px;
+    background: #f0f0f0;
+    margin-top: 40px;
+    font-size: 14px;
+    color: #555;
+    border-radius: 0 0 10px 10px;
+  }
+  body.dark-mode footer {
+    background: #222;
+    color: #aaa;
+  }
+</style>
+</head>
+<body>
+
+<button class="toggle-mode" id="modeToggle">Dark Mode</button>
+
+<h1>SmartFinance360 - Your Financial Analysis Assistant</h1>
+
+<div class="container">
+  <form id="financeForm">
+    <label for="income">Monthly Salary / Income (₹):</label>
+    <input type="number" id="income" min="0" placeholder="e.g., 50000" required />
+
+    <label for="roomRent">Room Rent (₹):</label>
+    <input type="number" id="roomRent" min="0" placeholder="e.g., 15000" required />
+
+    <label for="foodHome">Food Cost (Home) (₹):</label>
+    <input type="number" id="foodHome" min="0" placeholder="e.g., 8000" required />
+
+    <label for="foodOutside">Food Cost (Outside) (₹):</label>
+    <input type="number" id="foodOutside" min="0" placeholder="e.g., 5000" required />
+
+    <label for="transport">Transport Cost (₹):</label>
+    <input type="number" id="transport" min="0" placeholder="e.g., 3000" required />
+
+    <label for="health">Health Cost (₹):</label>
+    <input type="number" id="health" min="0" placeholder="e.g., 2000" required />
+
+    <label for="loanEmi">Loan EMI (if any) (₹):</label>
+    <input type="number" id="loanEmi" min="0" placeholder="e.g., 4000" value="0" />
+
+    <label for="otherIncome">Other Income (₹):</label>
+    <input type="number" id="otherIncome" min="0" placeholder="e.g., 0" value="0" />
+
+    <label for="investments">Existing SIP/Stock Investments (₹):</label>
+    <input type="number" id="investments" min="0" placeholder="e.g., 5000" value="0" />
+
+    <label for="emergencyFund">Do you have an Emergency Fund? </label>
+    <select id="emergencyFund" required>
+      <option value="" disabled selected>Select one</option>
+      <option value="yes">Yes</option>
+      <option value="no">No</option>
+    </select>
+
+    <label for="healthInsurance">Do you have Health Insurance? </label>
+    <select id="healthInsurance" required>
+      <option value="" disabled selected>Select one</option>
+      <option value="yes">Yes</option>
+      <option value="no">No</option>
+    </select>
+
+    <button type="submit">Generate Financial Report</button>
+  </form>
+</div>
+
+<div id="resultsSection" class="container">
+  <h2>Financial Summary</h2>
+
+  <table id="detailedSummaryTable" >
+    <thead>
+      <tr>
+        <th>Category</th>
+        <th>Amount (₹)</th>
+        <th>% of Income</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- Filled by JS -->
+    </tbody>
+  </table>
+
+  <canvas id="expenseChart" aria-label="Expense breakdown chart" role="img"></canvas>
+
+  <h3>Checklist</h3>
+  <ul id="checklist"></ul>
+
+  <h3>Loan Eligibility</h3>
+  <p id="loanEligibility"></p>
+
+  <h3>Recommendations</h3>
+  <div id="recommendations"></div>
+
+  <div style="margin-top: 20px;">
+    <button id="downloadPdf">Download Report as PDF</button>
+    <button id="downloadExcel">Download Report as Excel</button>
+    <button id="downloadChecklist">Download Checklist as Text</button>
+  </div>
+</div>
+
+<footer>
+  Developed with ❤️ by Bishal Singh
+</footer>
+
+<script>
+  // Dark/Light Mode Toggle
+  const modeToggle = document.getElementById('modeToggle');
+  modeToggle.addEventListener('click', () => {
+    document.body.classList.toggle('dark-mode');
+    modeToggle.textContent = document.body.classList.contains('dark-mode') ? 'Light Mode' : 'Dark Mode';
+  });
+
+  let expenseChart = null;
+
+  document.getElementById('financeForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+
+    // Inputs parse
+    const income = parseFloat(document.getElementById('income').value) || 0;
+    const roomRent = parseFloat(document.getElementById('roomRent').value) || 0;
+    const foodHome = parseFloat(document.getElementById('foodHome').value) || 0;
+    const foodOutside = parseFloat(document.getElementById('foodOutside').value) || 0;
+    const transport = parseFloat(document.getElementById('transport').value) || 0;
+    const health = parseFloat(document.getElementById('health').value) || 0;
+    const loanEmi = parseFloat(document.getElementById('loanEmi').value) || 0;
+    const otherIncome = parseFloat(document.getElementById('otherIncome').value) || 0;
+    const investments = parseFloat(document.getElementById('investments').value) || 0;
+    const emergencyFund = document.getElementById('emergencyFund').value;
+    const healthInsurance = document.getElementById('healthInsurance').value;
+
+    const totalIncome = income + otherIncome;
+    const totalExpenses = roomRent + foodHome + foodOutside + transport + health + loanEmi + investments;
+    const savings = totalIncome - totalExpenses;
+
+    // Ratios (%)
+    const rentRatio = totalIncome ? (roomRent / totalIncome) * 100 : 0;
+    const foodRatio = totalIncome ? ((foodHome + foodOutside) / totalIncome) * 100 : 0;
+    const outsideFoodRatio = totalIncome ? (foodOutside / totalIncome) * 100 : 0;
+    const transportRatio = totalIncome ? (transport / totalIncome) * 100 : 0;
+    const savingsRate = totalIncome ? (savings / totalIncome) * 100 : 0;
+
+    // Financial health score (out of 100)
+    // Base 100, deduct points for missing safety nets, high expenses, low savings etc.
+    let healthScore = 100;
+    if (emergencyFund === 'no') healthScore -= 20;
+    if (healthInsurance === 'no') healthScore -= 15;
+    if (investments === 0) healthScore -= 15;
+    if (rentRatio > 30) healthScore -= 10;
+    if (foodRatio > 20) healthScore -= 10;
+    if (outsideFoodRatio > 25) healthScore -= 10;
+    if (transportRatio > 10) healthScore -= 5;
+    if (savingsRate < 10) healthScore -= 15;
+    if (healthScore < 0) healthScore = 0;
+
+    // Checklist creation
+    const checklistEl = document.getElementById('checklist');
+    checklistEl.innerHTML = '';
+    const checklistItems = [
+      { text: 'Emergency Fund Available', status: emergencyFund === 'yes' },
+      { text: 'Health Insurance Coverage', status: healthInsurance === 'yes' },
+      { text: 'Existing SIP/Stock Investments', status: investments > 0 },
+      { text: 'Room Rent ≤ 30% of Income', status: rentRatio <= 30 },
+      { text: 'Food Expenses ≤ 20% of Income', status: foodRatio <= 20 },
+      { text: 'Outside Food ≤ 25% of Income', status: outsideFoodRatio <= 25 },
+      { text: 'Transport Expenses ≤ 10% of Income', status: transportRatio <= 10 },
+      { text: 'Savings ≥ 10% of Income', status: savingsRate >= 10 }
+    ];
+    checklistItems.forEach(item => {
+      const li = document.createElement('li');
+      li.textContent = item.text + (item.status ? ' ✓' : ' ✗');
+      li.style.color = item.status ? 'green' : 'red';
+      checklistEl.appendChild(li);
+    });
+
+    // Loan Eligibility - simple formula: Max EMI = 40% of income (including other EMI)
+    // So, eligibility EMI = 40% * totalIncome - current EMI
+    const maxEmiAllowed = totalIncome * 0.4;
+    const eligibleEmi = maxEmiAllowed - loanEmi;
+    const loanEligibilityEl = document.getElementById('loanEligibility');
+    if (eligibleEmi > 0) {
+      loanEligibilityEl.textContent = `You may be eligible for a loan with EMI up to ₹${eligibleEmi.toFixed(0)} per month.`;
+    } else {
+      loanEligibilityEl.textContent = "You currently have no additional EMI capacity for new loans.";
+    }
+
+    // Recommendations
+    const recommendationsEl = document.getElementById('recommendations');
+    const recs = [];
+    if (emergencyFund === 'no') recs.push("Start building an emergency fund covering 3-6 months of expenses.");
+    if (healthInsurance === 'no') recs.push("Consider getting health insurance to protect yourself and family.");
+    if (investments === 0) recs.push("Begin regular SIP or stock investments for long-term wealth.");
+    if (rentRatio > 30) recs.push("Try to reduce your room rent expense below 30% of your income.");
+    if (foodRatio > 20) recs.push("Control food expenses, especially outside food, to save money.");
+    if (outsideFoodRatio > 25) recs.push("Limit outside food consumption to improve health and finances.");
+    if (transportRatio > 10) recs.push("Look for ways to optimize transport costs.");
+    if (savingsRate < 10) recs.push("Increase your savings rate to at least 15% of your income.");
+
+    // Always add 3 top tips even if no problems found
+    if (recs.length === 0) {
+      recs.push("You're doing great! Keep tracking your finances regularly.");
+      recs.push("Consider diversifying your investments.");
+      recs.push("Keep an eye on expenses and continue building your savings.");
+    }
+    recommendationsEl.innerHTML = `<ul>${recs.map(r => `<li>${r}</li>`).join('')}</ul>`;
+
+    // Expense Breakdown Chart
+    const ctx = document.getElementById('expenseChart').getContext('2d');
+    const expenseData = {
+      labels: ['Room Rent', 'Food (Home)', 'Food (Outside)', 'Transport', 'Health', 'Loan EMI', 'Investments', 'Savings'],
+      datasets: [{
+        label: 'Monthly Financial Breakdown (₹)',
+        data: [roomRent, foodHome, foodOutside, transport, health, loanEmi, investments, savings > 0 ? savings : 0],
+        backgroundColor: [
+          '#3b82f6',
+          '#60a5fa',
+          '#93c5fd',
+          '#f97316',
+          '#ea580c',
+          '#dc2626',
+          '#16a34a',
+          '#22c55e'
+        ],
+        borderWidth: 1
+      }]
+    };
+
+    if (expenseChart) expenseChart.destroy();
+
+    expenseChart = new Chart(ctx, {
+      type: 'doughnut',
+      data: expenseData,
+      options: {
+        responsive: true,
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: { boxWidth: 14, padding: 10 }
+          },
+          tooltip: {
+            callbacks: {
+              label: ctx => {
+                const label = ctx.label || '';
+                const val = ctx.parsed || 0;
+                return `${label}: ₹${val.toLocaleString()}`;
+              }
+            }
+          }
+        }
+      }
+    });
+
+    // Populate Detailed Summary Table
+    const detailedSummaryTableBody = document.querySelector('#detailedSummaryTable tbody');
+    detailedSummaryTableBody.innerHTML = ''; // Clear old rows
+    const addRow = (cat, amt) => {
+      const percent = totalIncome ? ((amt / totalIncome) * 100).toFixed(2) : 0;
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${cat}</td><td>₹${amt.toLocaleString()}</td><td>${percent}%</td>`;
+      detailedSummaryTableBody.appendChild(tr);
+    };
+
+    addRow('Total Income', totalIncome);
+    addRow('Room Rent', roomRent);
+    addRow('Food (Home)', foodHome);
+    addRow('Food (Outside)', foodOutside);
+    addRow('Transport', transport);
+    addRow('Health', health);
+    addRow('Loan EMI', loanEmi);
+    addRow('Investments (SIP/Stocks)', investments);
+    addRow('Savings', savings > 0 ? savings : 0);
+
+    // Show results
+    document.getElementById('resultsSection').style.display = 'block';
+  });
+
+  // PDF Download
+  document.getElementById('downloadPdf').addEventListener('click', () => {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    doc.setFontSize(18);
+    doc.text("SmartFinance360 - Financial Report", 14, 20);
+    doc.setFontSize(12);
+    doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 28);
+
+    // Add detailed table using autotable
+    const table = document.getElementById('detailedSummaryTable');
+    doc.autoTable({ html: table, startY: 35 });
+
+    // Add checklist
+    const checklist = Array.from(document.querySelectorAll('#checklist li')).map(li => li.textContent);
+    doc.text("Checklist:", 14, doc.lastAutoTable.finalY + 10);
+    doc.setFontSize(11);
+    checklist.forEach((item, i) => {
+      doc.text(`- ${item}`, 16, doc.lastAutoTable.finalY + 20 + i * 7);
+    });
+
+    // Recommendations
+    const recItems = Array.from(document.querySelectorAll('#recommendations ul li')).map(li => li.textContent);
+    let y = doc.lastAutoTable.finalY + 30 + checklist.length * 7;
+    doc.setFontSize(12);
+    doc.text("Recommendations:", 14, y);
+    doc.setFontSize(11);
+    recItems.forEach((item, i) => {
+      doc.text(`• ${item}`, 16, y + 10 + i * 7);
+    });
+
+    doc.save('SmartFinance360_Financial_Report.pdf');
+  });
+
+  // Excel Download
+  document.getElementById('downloadExcel').addEventListener('click', () => {
+    const wb = XLSX.utils.book_new();
+
+    // Summary Table
+    const table = document.getElementById('detailedSummaryTable');
+    const ws = XLSX.utils.table_to_sheet(table);
+
+    XLSX.utils.book_append_sheet(wb, ws, 'Summary');
+
+    // Checklist
+    const checklistItems = Array.from(document.querySelectorAll('#checklist li')).map(li => [li.textContent]);
+    const wsChecklist = XLSX.utils.aoa_to_sheet([['Checklist'], ...checklistItems]);
+    XLSX.utils.book_append_sheet(wb, wsChecklist, 'Checklist');
+
+    // Recommendations
+    const recItems = Array.from(document.querySelectorAll('#recommendations ul li')).map(li => [li.textContent]);
+    const wsRecs = XLSX.utils.aoa_to_sheet([['Recommendations'], ...recItems]);
+    XLSX.utils.book_append_sheet(wb, wsRecs, 'Recommendations');
+
+    XLSX.writeFile(wb, 'SmartFinance360_Financial_Report.xlsx');
+  });
+
+  // Checklist Text Download
+  document.getElementById('downloadChecklist').addEventListener('click', () => {
+    const checklistItems = Array.from(document.querySelectorAll('#checklist li')).map(li => li.textContent).join('\n');
+    const blob = new Blob([checklistItems], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'SmartFinance360_Checklist.txt';
+    a.click();
+
+    URL.revokeObjectURL(url);
+  });
+</script>
+
+</body>
+</html>
